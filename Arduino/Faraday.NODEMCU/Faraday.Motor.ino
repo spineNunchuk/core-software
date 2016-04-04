@@ -1,18 +1,23 @@
 
-void setPower(int target, byte controllerType)
+void setPower(byte target, byte controllerType)
 {
 #if defined(ENABLEDEVMODE)
   Serial.print("setPower:");
   Serial.println(target);
 #endif
+#if defined(ENABLEWEBUPDATE)
+    disableWebUpdate();
+#endif
+
   if (isControllerEnabled())
   {
-    //If in neutral, allow a new controller to overtake control, otherwise stick to current controller
-    if (controlPower == defaultInputNeutral)
-      controlType = 0;
-    else
-      controlType = controllerType;
     metroControllerCommunication.reset();
+
+    //If current type control is nothing, and we get a power command from a controller, set the control type
+
+    if (controlType == 0 && controllerType != 0)
+      controlType = controllerType;
+
     adjustPower(constrain(target, defaultInputMaxBrake, defaultInputMaxAcceleration));
   }
   else
@@ -59,9 +64,7 @@ void adjustPower(byte target)
   }
   else
   {
-    controlPower = target;
-
-    controlPower = constrain(controlPower, defaultInputMaxBrake, defaultInputMaxAcceleration);
+    controlPower = constrain(target, defaultInputMaxBrake, defaultInputMaxAcceleration);
 #if defined(ENABLEDEVMODE)
     Serial.print("adjustPowerActual:");
     Serial.println(controlPower);
@@ -166,6 +169,7 @@ void setDefaultPower()
 {
   Serial.println("setDefaultPower");
   controlEnabled = false;
+  controlType = 0;
   motorDirection = 0;
   motorPercent  = 0;
   motorTargetPercent = 0;

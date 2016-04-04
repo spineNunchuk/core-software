@@ -17,7 +17,7 @@ byte defaultNunchukNeutral = 127;
 void readFromNunchukClient()
 {
   nunchuk.update();
-  yield();
+  delay(1);
 #if defined(ENABLEDEVMODE)
   Serial.println("DATA");
   Serial.print(nunchuk.analogX, DEC);
@@ -37,68 +37,66 @@ void readFromNunchukClient()
 
   if (isNunchukDataValid(nunchuk))
   {
-#if defined(ENABLEWEBUPDATE)
-    disableWebUpdate();
-#endif
-
     yield();
     if (isNunchukChecksumValid(nunchuk))
     {
       yield();
-      //slaveInputEnabled = true;
-      int nunchukY = constrain((byte)nunchuk.analogY, defaultNunchukMaxBrake, defaultNunchukMaxAcceleration);
-#if defined(ENABLEDEVMODE)
-      Serial.print("nunchukY: ");
-      Serial.println(nunchukY);
-#endif
-      if (nunchukY > defaultNunchukMinBrake && nunchukY < defaultNunchukMinAcceleration )
+      if (controlType == 0 || controlType == 2)
       {
-        //Neutral
+        int nunchukY = constrain((byte)nunchuk.analogY, defaultNunchukMaxBrake, defaultNunchukMaxAcceleration);
 #if defined(ENABLEDEVMODE)
-        Serial.print("setSlaveInputPower FROM NUNCHUK NEUTRAL: ");
-        Serial.println(defaultInputNeutral);
+        Serial.print("nunchukY: ");
+        Serial.println(nunchukY);
 #endif
-        controlEnabled = true;
-        setPower(defaultInputNeutral, 2);
-      }
-      else if (nunchukY > defaultNunchukMinAcceleration)
-      {
-        int input = map(nunchukY, defaultNunchukMinAcceleration, defaultNunchukMaxAcceleration, defaultInputMinAcceleration, defaultInputMaxAcceleration);
+        if (nunchukY > defaultNunchukMinBrake && nunchukY < defaultNunchukMinAcceleration )
+        {
+          //Neutral
 #if defined(ENABLEDEVMODE)
-        Serial.print("setSlaveInputPower FROM NUNCHUK ACCEL: ");
-        Serial.println(input);
+          Serial.print("setSlaveInputPower FROM NUNCHUK NEUTRAL: ");
+          Serial.println(defaultInputNeutral);
 #endif
-        controlEnabled = true;
-        setPower(input, 2);
-      }
-      else
-      {
-        int input = map(nunchukY, defaultNunchukMinBrake, defaultNunchukMaxBrake, defaultInputMinBrake, defaultInputMaxBrake);
+          controlEnabled = true;
+          setPower(defaultInputNeutral, 2);
+        }
+        else if (nunchukY >= defaultNunchukMinAcceleration)
+        {
+          byte input = map(nunchukY, defaultNunchukMinAcceleration, defaultNunchukMaxAcceleration, defaultInputMinAcceleration, defaultInputMaxAcceleration);
 #if defined(ENABLEDEVMODE)
-        Serial.print("setSlaveInputPower FROM NUNCHUK BRAKE: ");
-        Serial.println(input);
+          Serial.print("setSlaveInputPower FROM NUNCHUK ACCEL: ");
+          Serial.println(input);
 #endif
-        controlEnabled = true;
-        setPower(input, 2);
-      }
-      yield();
+          controlEnabled = true;
+          setPower(input, 2);
+        }
+        else
+        {
+          byte input = map(nunchukY, defaultNunchukMinBrake, defaultNunchukMaxBrake, defaultInputMinBrake, defaultInputMaxBrake);
+#if defined(ENABLEDEVMODE)
+          Serial.print("setSlaveInputPower FROM NUNCHUK BRAKE: ");
+          Serial.println(input);
+#endif
+          controlEnabled = true;
+          setPower(input, 2);
+        }
+        delay(1);
 
 #if defined(ENABLEDEVMODE)
-      Serial.println("DATA VALID");
-      Serial.print(nunchuk.analogX, DEC);
-      Serial.print(' ');
-      Serial.print(nunchuk.analogY, DEC);
-      Serial.print(' ');
-      Serial.print(nunchuk.accelX, DEC);
-      Serial.print(' ');
-      Serial.print(nunchuk.accelY, DEC);
-      Serial.print(' ');
-      Serial.print(nunchuk.accelZ, DEC);
-      Serial.print(' ');
-      Serial.print(nunchuk.zButton, DEC);
-      Serial.print(' ');
-      Serial.println(nunchuk.cButton, DEC);
+        Serial.println("DATA VALID");
+        Serial.print(nunchuk.analogX, DEC);
+        Serial.print(' ');
+        Serial.print(nunchuk.analogY, DEC);
+        Serial.print(' ');
+        Serial.print(nunchuk.accelX, DEC);
+        Serial.print(' ');
+        Serial.print(nunchuk.accelY, DEC);
+        Serial.print(' ');
+        Serial.print(nunchuk.accelZ, DEC);
+        Serial.print(' ');
+        Serial.print(nunchuk.zButton, DEC);
+        Serial.print(' ');
+        Serial.println(nunchuk.cButton, DEC);
 #endif
+      }
     }
     else
     {
@@ -154,7 +152,9 @@ bool isNunchukChecksumValid(ArduinoNunchuk nunchuk)
   if (sum == 3579)
   {
     Wire.endTransmission(false);
+    delay(1);
     nunchuk.init();
+    delay(1);
     return false;
   }
   //Create the checksum

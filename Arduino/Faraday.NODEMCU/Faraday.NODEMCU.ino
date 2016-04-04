@@ -1,6 +1,6 @@
 //Requires 
-//http://arduino.esp8266.com/staging/package_esp8266com_index.json
-//VERSION: 2.1.0-rc2
+//http://arduino.esp8266.com/stable/package_esp8266com_index.json
+//VERSION: 2.1.0
 //ArduinoNunchuk
 //Metro
 //WS2812
@@ -13,12 +13,12 @@
 //#define ENABLESERVOESC // Enable servo output for traditional motorcontrollers
 #define ENABLEWIFI //Enable wifi AP
 #define ENABLENUNCHUK //Enable control through a nunchuk
-//#define ENABLELED //Enable led control
+//#define ENABLELED //Enable led control - NOT WORKING RELIABLE
 //#define ENABLEDEADSWITCH //Enable dead man switch 
-//#define ENABLEOTAUPDATE //Not working
+//#define ENABLEOTAUPDATE //OTA - Not working
+//#define ENABLEDISCBRAKE //Disc brakes - not working
 #define ENABLESMOOTHING //Enable smothing of input values
 #define ENABLENONLINEARBRAKE // Non linear braking, softer braking in the beginning
-//#define ENABLEDISCBRAKE //Disc brakes
 
 //How many clients should be able to connect to this ESP8266
 #define MAX_SRV_CLIENTS 1
@@ -33,14 +33,14 @@
 //Required includes
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
-//#include <ESP8266mDNS.h>
 //#include <WiFiUdp.h>
 //#include <ArduinoOTA.h>
 #include <IPAddress.h>
 #include <Servo.h>
 #include <Metro.h>
 #include <ws2812_i2s.h>
-
+#include <ArduinoJson.h>
+#include "FS.h"
 
 //Optional includes
 #if defined(ENABLEVESC)
@@ -57,11 +57,11 @@
 #endif
 //There is an issue when putting "if defined()" sections below includes
 
-const char *faradayVersion = "20160227";
+const char *faradayVersion = "20160319-2.1.0";
 
 //Wifi
-const char *ssid = "FARADAY200";
-const char *password = "faraday200";
+const char *ssid = "FARADAY100";
+const char *password = "faraday100";
 const int port = 8899;
 WiFiServer server(port);
 WiFiClient serverClients[MAX_SRV_CLIENTS];
@@ -69,9 +69,9 @@ WiFiClient serverClients[MAX_SRV_CLIENTS];
 //Metro timers
 Metro metroControllerRead = Metro(50);
 Metro metro250ms = Metro(250);
-Metro metroLeds = Metro(200);
+Metro metroLeds = Metro(100);
 Metro metroLedsReadyState = Metro(50);
-Metro metroControllerCommunication = Metro(1000);
+Metro metroControllerCommunication = Metro(500);
 
 #if defined(ENABLESERVOESC)
 int servoMaxPWM = 2000;
@@ -115,7 +115,6 @@ byte defaultInputMinBrake = 48;
 byte defaultInputMaxBrake = 0;
 byte defaultInputMinAcceleration = 52;
 byte defaultInputMaxAcceleration = 100;
-float defaultMaxStepUP = 2;
 float defaultSmoothAlpha = 0.5;
 
 
@@ -132,7 +131,7 @@ bool controlEnabled = false;
 float controlPower = defaultInputNeutral;
 int controlTarget = defaultInputNeutral;
 bool controlCruiseControl = false;
-byte controlType = 0;
+byte controlType = 0; //0= Nothing, 1= WiFi, 2=Nunchuk
 
 //Motor
 byte motorDirection = 0; //0 = Neutral, 1= Acc, 2= Brake, 3 = Reverse
@@ -180,21 +179,24 @@ void setupSERVO()
 void setup()
 {
   Serial.begin(115200);
+  delay(1000);
+  loadConfiguration();
+  
+#if defined(ENABLEWIFI)
+  setupWIFI();
+#endif
+
   //Lets change the pins for serial as we need the i2s pin
-#if defined(ENABLELED) && defined(ENABLESERVOESC)
-  //Use other pins for rx/tx when leds are enabled
+#if defined(ENABLELED) && defined(ENABLEVESC)
+  //Use other pins for rx/tx when leds are enabled and we are using VESC
   Serial.swap();
 #endif
   pinMode(PINEXTERNALRESET, OUTPUT);
   digitalWrite(PINEXTERNALRESET, LOW);
-  delay(500);
+  delay(250);
 
   Serial.print("Faraday Motion FirmwareVersion:");
   Serial.println(faradayVersion);
-
-#if defined(ENABLEWIFI)
-  setupWIFI();
-#endif
 
 #if defined(ENABLEOTAUPDATE)
   setupOTA();
@@ -229,7 +231,7 @@ void setup()
   attachInterrupt(PINDEADSWITCH, setDeadSwitch, RISING);
 #endif
 
-  delay(500);
+  delay(250);
   digitalWrite(PINEXTERNALRESET, HIGH);
 }
 
@@ -255,14 +257,12 @@ void loop()
   yield();
   if (metroControllerRead.check() == 1) {    
 #if defined(ENABLEWIFI)
-    if (controlType == 0 || controlType == 1)
       readFromWifiClient();
 #endif
 #if defined(ENABLENUNCHUK)
-    if (controlType == 0 || controlType == 2)
       readFromNunchukClient();
 #endif
-    yield();
+    delay(1);
 
 #if defined(ENABLEDEADSWITCH)
     if (digitalRead(PINDEADSWITCH) == HIGH)
@@ -276,7 +276,6 @@ void loop()
     {
       //It passed too long time since last communication with a controller
       setDefaultPower();
-      yield();
     }
 
     //Convert and set the current power

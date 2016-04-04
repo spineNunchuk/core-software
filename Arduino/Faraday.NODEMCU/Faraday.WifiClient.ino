@@ -9,9 +9,14 @@ void setupWIFI()
   byte channel = 11;
   float wifiOutputPower = 20.5; //Max power
   WiFi.setOutputPower(wifiOutputPower);
-  WiFi.setPhyMode(WIFI_PHY_MODE_11N);
+  WiFi.setPhyMode(WIFI_PHY_MODE_11B);
   WiFi.setSleepMode(WIFI_NONE_SLEEP);
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_AP);
+  //C:\Users\spe\AppData\Roaming\Arduino15\packages\esp8266\hardware\esp8266\2.1.0\cores\esp8266\core_esp8266_phy.c
+  //TRYING TO SET [114] = 3 in core_esp8266_phy.c 3 = init all rf
 
+  WiFi.persistent(false);
   WiFi.softAPConfig(address, address, subnet);
   WiFi.softAP(ssid, password, channel);
   IPAddress myIP = WiFi.softAPIP();
@@ -20,7 +25,8 @@ void setupWIFI()
   Serial.println(myIP);
 
   server.begin();
-  server.setNoDelay(true);
+  //Set delay = true retarts the esp in version 2.1.0, check in later versions if its fixed
+  //server.setNoDelay(true);
 }
 
 void hasClients()
@@ -31,9 +37,6 @@ void hasClients()
     for (i = 0; i < MAX_SRV_CLIENTS; i++) {
       //find free/disconnected spot
       if (!serverClients[i] || !serverClients[i].connected()) {
-#if defined(ENABLEWEBUPDATE)
-        disableWebUpdate();
-#endif
         if (serverClients[i])
           serverClients[i].stop();
         serverClients[i] = server.available();
@@ -59,7 +62,7 @@ void readFromWifiClient()
   //Check clients for data
   for (i = 0; i < MAX_SRV_CLIENTS; i++) {
     if (serverClients[i] && serverClients[i].connected()) {
-      unsigned int timeout = 1;
+      unsigned int timeout = 3;
       unsigned long timestamp = millis();
 
       while (serverClients[i].available() == 0 && ((millis() - timestamp) <= timeout))
@@ -96,6 +99,7 @@ void readFromWifiClient()
           {
             m[packetCount++] = serverClients[i].read();
           }
+          delay(1);
 
 
 #if defined(ENABLEDEVMODE)
@@ -116,10 +120,13 @@ void readFromWifiClient()
 #endif
           if (validateChecksum(m, packetCount))
           {
-            yield();
+            delay(1);
             //Set the power and specify controller 1, the wifi reciever
-            controlEnabled = true;
-            setPower(m[4], 1);
+            if (controlType == 0 || controlType == 1)
+            {
+              controlEnabled = true;
+              setPower(m[4], 1);
+            }
           }
           else
           {
