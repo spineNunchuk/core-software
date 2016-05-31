@@ -7,10 +7,13 @@ This project brings support for VESC Motorcontrollers with ESP8266 boards such a
 ##### Supported Hardware #####
  - ESP8266 [Arduino for ESP8266](https://github.com/esp8266/Arduino)
 
-#### Available versions 
+
 
 ##### Stable version
- - [v.1.0](https://github.com/faraday-motion/core-software)
+ - [v.1.0](https://github.com/faraday-motion/core-software/releases/tag/v1.0)
+
+#### Available versions 
+- [v.1.0](https://github.com/faraday-motion/core-software/releases/tag/v1.0)
 
 ### Usage
 
@@ -20,7 +23,7 @@ This project brings support for VESC Motorcontrollers with ESP8266 boards such a
 - Restart Arduino
 
 ### Dependencies
-- [Faraday Motion Vesc](https://github.com/faraday-motion/vesc)
+- [Faraday Motion Vesc](https://github.com/faraday-motion/vesc/releases/tag/v1.0)
 - [Arduinojson](https://github.com/bblanchon/ArduinoJson)  (version 5.1.1)
 - [ArduinoNunchuck](https://github.com/GabrielBianconi/ArduinoNunchuk)
 - Metro (built in Arduino IDE)
