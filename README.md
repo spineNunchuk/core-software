@@ -1,7 +1,7 @@
 Faraday Motion Core  - Control VESC Motorcontrollers with ESP8266 WiFi chips
 =======================================================================
 
-This project brings support for VESC Motorcontrollers with ESP8266 boards such as NodeMCU and WeMos. This .
+This project brings support for VESC Motorcontrollers with ESP8266 boards such as NodeMCU and WeMos.
  
 
 ##### Supported Hardware #####
@@ -10,10 +10,11 @@ This project brings support for VESC Motorcontrollers with ESP8266 boards such a
 
 
 ##### Stable version
- - [v.1.0](https://github.com/faraday-motion/core-software/releases/tag/v1.0)
+ - [v.1.1](https://github.com/faraday-motion/core-software/releases/tag/v1.0)
 
 #### Available versions 
 - [v.1.0](https://github.com/faraday-motion/core-software/releases/tag/v1.0)
+- [v.1.1](https://github.com/faraday-motion/core-software/releases/tag/v1.1)
 
 ### Usage
 
