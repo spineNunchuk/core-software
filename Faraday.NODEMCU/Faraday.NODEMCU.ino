@@ -1,9 +1,9 @@
-//Requires 
-//http://arduino.esp8266.com/stable/package_esp8266com_index.json
-//VERSION: 2.1.0
+//Requires
+//http://arduino.esp8266.com/staging/package_esp8266com_index.json
+//VERSION: 2.2.0-RC1
 //ArduinoNunchuk
 //Metro
-//WS2812
+//NeoPixelBus
 //Faraday.Vesc
 
 //Optional defines
@@ -14,14 +14,16 @@
 #define ENABLEWIFI //Enable wifi AP
 #define ENABLENUNCHUK //Enable control through a nunchuk
 //#define ENABLELED //Enable led control - NOT WORKING RELIABLE
-//#define ENABLEDEADSWITCH //Enable dead man switch 
+//#define ENABLEDEADSWITCH //Enable dead man switch
 //#define ENABLEOTAUPDATE //OTA - Not working
 //#define ENABLEDISCBRAKE //Disc brakes - not working
 #define ENABLESMOOTHING //Enable smothing of input values
 #define ENABLENONLINEARBRAKE // Non linear braking, softer braking in the beginning
 
+#define FARADAY_VERSION "NODEMCU20160505-2.2.0-RC1"
+
 //How many clients should be able to connect to this ESP8266
-#define MAX_SRV_CLIENTS 1
+#define MAX_SRV_CLIENTS 5
 
 //Pins
 #define PINEXTERNALRESET 16
@@ -29,6 +31,7 @@
 #define PINSERVOESC 0
 #define PINSERVOBRAKE1 2
 #define PINSERVOBRAKE2 14
+#define PINPIXEL 3
 
 //Required includes
 #include <Arduino.h>
@@ -38,7 +41,8 @@
 #include <IPAddress.h>
 #include <Servo.h>
 #include <Metro.h>
-#include <ws2812_i2s.h>
+#include <NeoPixelBus.h>
+//#include <ws2812_i2s.h>
 #include <ArduinoJson.h>
 #include "FS.h"
 
@@ -81,16 +85,15 @@ Servo servoESC;
 #endif
 
 #if defined(ENABLELED)
-#define LEDSTOTAL 14
-#define LEDSCONTROLCOUNT   12
-#define LEDSFRONTCOUNT   1
-#define LEDSBACKCOUNT   1
+#define LEDSTOTAL 24
+#define LEDSCONTROLCOUNT   0
+#define LEDSFRONTCOUNT   0
+#define LEDSBACKCOUNT   24
 #define LEDSCONTROLINDEX   0
-#define LEDSFRONTINDEX   12
-#define LEDSBACKINDEX   13
+#define LEDSFRONTINDEX   0
+#define LEDSBACKINDEX   0
 
-static WS2812 leds;
-static Pixel_t pixels[LEDSTOTAL];
+NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> leds(LEDSTOTAL, PINPIXEL);
 #endif
 
 #if defined(ENABLEWEBUPDATE)
@@ -179,9 +182,9 @@ void setupSERVO()
 void setup()
 {
   Serial.begin(115200);
-  delay(1000);
+  delay(250);
   loadConfiguration();
-  
+
 #if defined(ENABLEWIFI)
   setupWIFI();
 #endif
@@ -193,10 +196,9 @@ void setup()
 #endif
   pinMode(PINEXTERNALRESET, OUTPUT);
   digitalWrite(PINEXTERNALRESET, LOW);
-  delay(250);
 
-  Serial.print("Faraday Motion FirmwareVersion:");
-  Serial.println(faradayVersion);
+  Serial.print(F("Faraday Motion FirmwareVersion:"));
+  Serial.println(FARADAY_VERSION);
 
 #if defined(ENABLEOTAUPDATE)
   setupOTA();
@@ -255,14 +257,14 @@ void loop()
 #endif
 
   yield();
-  if (metroControllerRead.check() == 1) {    
+  if (metroControllerRead.check() == 1) {
 #if defined(ENABLEWIFI)
-      readFromWifiClient();
+    readFromWifiClient();
 #endif
 #if defined(ENABLENUNCHUK)
-      readFromNunchukClient();
+    readFromNunchukClient();
 #endif
-    delay(1);
+    yield();
 
 #if defined(ENABLEDEADSWITCH)
     if (digitalRead(PINDEADSWITCH) == HIGH)
@@ -302,14 +304,16 @@ void loop()
 #if defined(ENABLELED)
   if (metroLeds.check() == 1)
   {
-    setLedControls();
-    yield();
+    //setLedControls();
+    showLedLights();
   }
-  if (metroLedsReadyState.check() == 1)
-  {
-    showLedState();
-    yield();
-    leds.show(pixels);
-  }
+  // if (metroLedsReadyState.check() == 1)
+  // {
+  //   showLedState();
+  //   yield();
+  // }
+  // updateLeds();
 #endif
 }
+
+

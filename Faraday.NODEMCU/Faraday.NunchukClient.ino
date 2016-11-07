@@ -17,7 +17,7 @@ byte defaultNunchukNeutral = 127;
 void readFromNunchukClient()
 {
   nunchuk.update();
-  delay(1);
+  yield();
 #if defined(ENABLEDEVMODE)
   Serial.println("DATA");
   Serial.print(nunchuk.analogX, DEC);
