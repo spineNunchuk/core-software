@@ -1,3 +1,5 @@
+
+
 //Requires
 //http://arduino.esp8266.com/staging/package_esp8266com_index.json
 //VERSION: 2.2.0-RC1
@@ -23,7 +25,7 @@
 #define FARADAY_VERSION "NODEMCU20160505-2.2.0-RC1"
 
 //How many clients should be able to connect to this ESP8266
-#define MAX_SRV_CLIENTS 5
+#define MAX_SRV_CLIENTS 5 
 
 //Pins
 #define PINEXTERNALRESET 16
@@ -39,16 +41,20 @@
 //#include <WiFiUdp.h>
 //#include <ArduinoOTA.h>
 #include <IPAddress.h>
-#include <Servo.h>
+//#include <Servo.h>
 #include <Metro.h>
 #include <NeoPixelBus.h>
 //#include <ws2812_i2s.h>
 #include <ArduinoJson.h>
 #include "FS.h"
 
+
 //Optional includes
 #if defined(ENABLEVESC)
 #include <FaradayVESC.h>
+// Required for reading the mc_config datatype. 
+// TODO: Move this to the Faraday Interface.
+#include <lib/bldc_uart_comm_stm32f4_discovery/datatypes.h>
 #include <Ticker.h>
 #endif
 //#if defined(ENABLENUNCHUK)
@@ -59,6 +65,7 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #endif
+
 //There is an issue when putting "if defined()" sections below includes
 
 const char *faradayVersion = "20160319-2.1.0";
@@ -104,6 +111,7 @@ ESP8266HTTPUpdateServer httpUpdater;
 
 #if  defined(ENABLEVESC)
 Ticker vescTicker;
+Ticker vescGetValuesTicker;
 FaradayVESC vesc = FaradayVESC();
 #endif
 
@@ -145,30 +153,6 @@ byte motorPercent = 0;
 ArduinoNunchuk nunchuk = ArduinoNunchuk();
 #endif
 
-#if  defined(ENABLEVESC)
-void vescSend(unsigned char *data, unsigned int len)
-{
-  Serial.write(data, len);
-}
-
-void triggerUpdate(int i)
-{
-  vesc.update();
-}
-
-void vescProcess(unsigned char *data, unsigned int len)
-{
-  Serial.println(*data);
-}
-
-void setupVESC()
-{
-  vesc.init(vescSend, vescProcess);
-  //Call this method every millisecond
-  vescTicker.attach_ms(1, triggerUpdate, 0);
-}
-#endif
-
 #if defined(ENABLESERVOESC)
 void setupSERVO()
 {
@@ -208,7 +192,7 @@ void setup()
   setupWebUpdate();
 #endif
 
-#if  defined(ENABLEVESC)
+#if defined(ENABLEVESC)
   setupVESC();
 #endif
 
@@ -239,6 +223,13 @@ void setup()
 
 void loop()
 {
+
+// Process Data From VESC
+// Serial.println("READING FROM SERIAL:");
+while (Serial.available() > 0) {
+  vescProcess(Serial.read());
+}
+
 #if defined(ENABLEOTAUPDATE)
   ArduinoOTA.handle();
 #endif

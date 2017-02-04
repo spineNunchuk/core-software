@@ -1,3 +1,5 @@
+Note this branch is still in development.
+
 Faraday Motion Core  - Control VESC Motorcontrollers with ESP8266 WiFi chips
 =======================================================================
 
