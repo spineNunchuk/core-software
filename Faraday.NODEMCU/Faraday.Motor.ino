@@ -167,7 +167,9 @@ void convertPower()
 
 void setDefaultPower()
 {
-  Serial.println("setDefaultPower");
+  #if defined(ENABLEDEVMODE)
+  Serial.println("DefPwr");
+  #endif
   controlEnabled = false;
   controlType = 0;
   motorDirection = 0;

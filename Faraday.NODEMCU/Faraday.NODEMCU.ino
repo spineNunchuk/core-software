@@ -8,17 +8,18 @@
 
 //Optional defines
 //#define ENABLEDEVMODE //Output debugging information
-#define ENABLEWEBUPDATE //Enable web updates through http://10.10.100.254/update
+//#define ENABLEWEBUPDATE //Enable web updates through http://10.10.100.254/update
 #define ENABLEVESC //Control the vesc through serial
 //#define ENABLESERVOESC // Enable servo output for traditional motorcontrollers
 #define ENABLEWIFI //Enable wifi AP
-#define ENABLENUNCHUK //Enable control through a nunchuk
+//#define ENABLENUNCHUK //Enable control through a nunchuk
 //#define ENABLELED //Enable led control - NOT WORKING RELIABLE
 //#define ENABLEDEADSWITCH //Enable dead man switch
 //#define ENABLEOTAUPDATE //OTA - Not working
 //#define ENABLEDISCBRAKE //Disc brakes - not working
 #define ENABLESMOOTHING //Enable smothing of input values
 #define ENABLENONLINEARBRAKE // Non linear braking, softer braking in the beginning
+#define ENABLEWIFINUNCHUK
 
 #define FARADAY_VERSION "NODEMCU20160505-2.2.0-RC1"
 
@@ -36,12 +37,11 @@
 //Required includes
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
-//#include <WiFiUdp.h>
 //#include <ArduinoOTA.h>
 #include <IPAddress.h>
-#include <Servo.h>
+//#include <Servo.h>
 #include <Metro.h>
-#include <NeoPixelBus.h>
+//#include <NeoPixelBus.h>
 //#include <ws2812_i2s.h>
 #include <ArduinoJson.h>
 #include "FS.h"
@@ -49,15 +49,22 @@
 //Optional includes
 #if defined(ENABLEVESC)
 #include <FaradayVESC.h>
+// Required for reading the mc_config datatype. 
+// TODO: Move this to the Faraday Interface.
+#include <lib/bldc_uart_comm_stm32f4_discovery/datatypes.h>
+extern mc_values vesc_data;
 #include <Ticker.h>
 #endif
-//#if defined(ENABLENUNCHUK)
+#if defined(ENABLENUNCHUK)
 #include <Wire.h>
 #include <ArduinoNunchuk.h>
-//#endif
+#endif
 #if defined(ENABLEWEBUPDATE)
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPUpdateServer.h>
+#endif
+#if defined(ENABLEWIFINUNCHUK)
+#include <WiFiUdp.h>
 #endif
 //There is an issue when putting "if defined()" sections below includes
 
@@ -76,6 +83,10 @@ Metro metro250ms = Metro(250);
 Metro metroLeds = Metro(100);
 Metro metroLedsReadyState = Metro(50);
 Metro metroControllerCommunication = Metro(500);
+#if defined(ENABLEWIFINUNCHUK)
+Metro metroUDPSend = Metro(50);
+#endif
+
 
 #if defined(ENABLESERVOESC)
 int servoMaxPWM = 2000;
@@ -104,6 +115,7 @@ ESP8266HTTPUpdateServer httpUpdater;
 
 #if  defined(ENABLEVESC)
 Ticker vescTicker;
+Ticker vescGetValuesTicker;
 FaradayVESC vesc = FaradayVESC();
 #endif
 
@@ -143,30 +155,6 @@ byte motorPercent = 0;
 
 #if defined(ENABLENUNCHUK)
 ArduinoNunchuk nunchuk = ArduinoNunchuk();
-#endif
-
-#if  defined(ENABLEVESC)
-void vescSend(unsigned char *data, unsigned int len)
-{
-  Serial.write(data, len);
-}
-
-void triggerUpdate(int i)
-{
-  vesc.update();
-}
-
-void vescProcess(unsigned char *data, unsigned int len)
-{
-  Serial.println(*data);
-}
-
-void setupVESC()
-{
-  vesc.init(vescSend, vescProcess);
-  //Call this method every millisecond
-  vescTicker.attach_ms(1, triggerUpdate, 0);
-}
 #endif
 
 #if defined(ENABLESERVOESC)
@@ -239,6 +227,11 @@ void setup()
 
 void loop()
 {
+// Process Data From VESC
+while (Serial.available() > 0) {
+  vescProcess(Serial.read());
+}
+yield();
 #if defined(ENABLEOTAUPDATE)
   ArduinoOTA.handle();
 #endif
@@ -261,9 +254,6 @@ void loop()
 #if defined(ENABLEWIFI)
     readFromWifiClient();
 #endif
-#if defined(ENABLENUNCHUK)
-    readFromNunchukClient();
-#endif
     yield();
 
 #if defined(ENABLEDEADSWITCH)
@@ -282,23 +272,20 @@ void loop()
 
     //Convert and set the current power
     convertPower();
+
+    yield();
+    #if defined(ENABLEWIFINUNCHUK)
+    if (metroUDPSend.check() == 1)
+    {
+        Wifi_sendUdpPacket(&vesc_data);
+        yield();
+        MonitorNunchukClient();
+    }
+    yield();
+    Wifi_receiveUdpPacket();
+    #endif
     yield();
 
-    /*
-    //check UART for data
-    if(Serial.available()){
-      size_t len = Serial.available();
-      uint8_t sbuf[len];
-      Serial.readBytes(sbuf, len);
-      //push UART data to all connected telnet clients
-      for(i = 0; i < MAX_SRV_CLIENTS; i++){
-        if (serverClients[i] && serverClients[i].connected()){
-          serverClients[i].write(sbuf, len);
-          delay(1);
-        }
-      }
-    }
-    */
   }
 
 #if defined(ENABLELED)
