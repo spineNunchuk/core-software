@@ -82,6 +82,8 @@ void Wifi_sendUdpPacket(mc_values *values)
        checksum += Upd_SendFloat(values->amp_hours_charged);
        checksum += Upd_SendFloat(values->watt_hours);
        checksum += Upd_SendFloat(values->watt_hours_charged);
+       checksum += Upd_SendInt(values->tachometer);
+       checksum += Upd_SendInt(values->tachometer_abs);
        /* Build packet information: EndOfPaquet */
        portUDP.write('*');
        checksum += '*';
@@ -321,6 +323,20 @@ uint8_t Upd_SendFloat(float in_data)
     for (iloop = 0; iloop < 4; iloop++) {
         checksum_data += float_temp.bytes[iloop];
         portUDP.write(float_temp.bytes[iloop]);
+    }
+    return checksum_data;
+}
+
+uint8_t Upd_SendInt(int32_t in_data)
+{
+    uint8_t checksum_data = 0;
+    uint8_t iloop;
+    uint8_t data;
+
+    for (iloop = 0; iloop < 4; iloop++) {
+        data = (uint8_t)((int32_t)in_data >> (iloop * 8u));
+        checksum_data += data;
+        portUDP.write(data);
     }
     return checksum_data;
 }

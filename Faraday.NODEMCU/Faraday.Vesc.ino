@@ -81,6 +81,8 @@ void valuesCallback(mc_values *val) {
    vesc_data.amp_hours_charged = val->amp_hours_charged;
    vesc_data.watt_hours = val->watt_hours;
    vesc_data.watt_hours_charged = val->watt_hours_charged;
+   vesc_data.tachometer = val->tachometer;
+   vesc_data.tachometer_abs = val->tachometer_abs;
 }
 
 
